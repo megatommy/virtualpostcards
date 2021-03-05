@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta http-equiv="content-type" content="text/html; charset=utf-8" />
+		<title>VPS</title>
+		<link rel="stylesheet" href="assets/css/bulma.css">
+		<link rel="stylesheet" href="assets/css/bulma-tooltip.min.css">
+		<link rel="stylesheet" href="assets/css/fontello.css">
+		<link rel="stylesheet" href="assets/css/style.css">
+
+		<script type="text/javascript" src="assets/js/vue.js"></script>
+		<script type="text/javascript" src="assets/js/clipboard.min.js"></script>
+		<script type="text/javascript" src="assets/js/typed.js"></script>
+		<script type="text/javascript" src="assets/js/vpc.js"></script>
+	</head>
+
+	<body>
+		<section id="app" class="section" style="padding-top: 2rem;">
+			<h1 style="text-align: center;" class="title-h1" v-if="state == 'editor'">Virtual Postcards</h1>
+			<h2 class="title-h2" v-if="state == 'editor'">A human touch to a digital message</h2>
+			<div style="margin-top: 100px;" v-if="state == 'view'"></div>
+			<div class="container" style="max-width: 720px;">
+				<div class="content" style="padding: 15px; box-shadow: 0 0 8px black; background-color: white;">
+					<div class="editor" v-if="state == 'editor'">
+						<input class="input is-large header-input" type="text" placeholder="Type your heading here..." style="border: 0; box-shadow: none; padding: 0;" v-model="header" />
+						<hr style="margin: .7rem 0;" />
+						<textarea class="textarea" style="border: 0; box-shadow: none; padding: 0; resize: none;" rows="10" maxlength="500" placeholder="...and your message here. Typing text **like this** will type and erase that text!" v-model="card_text"></textarea>
+						<div class="columns">
+							<div class="column">
+								<div class="select" style="width: 100%;">
+									<select style="width: 100%;" v-model="bgimage">
+										<option value="" selected="selected">No background</option>
+										<option value="wall">Wall</option>
+										<option value="skulls">Skulls</option>
+										<option value="old-map">Old Map</option>
+										<option value="purty-wood">Purty Wood</option>
+									</select>
+								</div>
+							</div>
+							<div class="column">
+								<a class="button is-link is-outlined" style="width: 100%;" v-on:click="generate_postcard">Create postcard</a>
+							</div>
+						</div>
+					</div>
+
+					<div class="view" v-if="state == 'view'">
+						<h1 style="font-size: 2.45em;">{{ header }}</h1>
+						<hr style="margin: .7rem 0;" />
+						<div id="card_text" class="text">{{ card_text }}</div>
+						<div class="foot-er" style="margin-top: .7rem;">
+							<span v-on:click="create_postcard" class="icon tooltip is-tooltip-bottom" data-tooltip="Create postcard"><i class="icon-magic"></i></span>
+							<span onclick="location.reload();" class="icon tooltip is-tooltip-bottom" data-tooltip="See postcard again"><i class="icon-arrows-cw"></i></span>
+							<span class="icon tooltip is-tooltip-bottom is-pulled-right" data-tooltip="Copy link" id="copy_link" onmouseleave="javascript:this.setAttribute('data-tooltip', 'Copy link');"><i class="icon-link"></i></span>
+							<span class="icon tooltip is-tooltip-bottom is-pulled-right" data-tooltip="Share postcard"><i class="icon-facebook"></i></span>
+							<span class="icon tooltip is-tooltip-bottom is-pulled-right" data-tooltip="Tweet this postcard"><i class="icon-twitter"></i></span>
+							
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+		<script>
+			//makes code more readable
+			var qs = function(b){return document.querySelector(b);}
+
+			var app = new Vue({
+				el: '#app',
+				data: {
+					hash: '',
+					state: 'view',
+					bgimage: '',
+					header: '',
+					card_text: ''
+				},
+
+				created(){
+					try{
+						var hash = window.location.hash.substring(1);
+						jsonfromhash = atob(hash);
+						if(jsonfromhash){
+							var jsondata = JSON.parse(jsonfromhash);
+							this.state = 'view';
+							this.header = jsondata.h;	
+							this.card_text = jsondata.t;
+							this.bgimage = jsondata.b;
+
+							
+							
+						} else {
+							this.state = 'editor';
+						}
+					} catch(e){
+						//if error, redirect to creating new
+						console.log(e);
+						console.log('going to editor?');
+						console.log(window.location.origin + '' + window.location.pathname);
+						window.location = window.location.origin + '' + window.location.pathname;
+					}
+					
+					
+				},
+
+				mounted(){
+					if(this.state == 'view'){
+
+						//for the copy link
+						new ClipboardJS('#copy_link', {
+						    text: function(trigger) {
+						    	qs('#copy_link').setAttribute('data-tooltip', 'Link copied!');
+						        return window.location.href;
+						    }
+						});
+
+
+						//getting the height of the element when all text is in, prevent jumping when typing to newlines
+						qs('.view .text').style.height = qs('.view .text').offsetHeight + 'px';
+						qs('.view .text').innerText = '';
+						//initializing the typing
+						var vpc = new VPC();
+						vpc.element = '#card_text';
+						vpc.card_text = this.card_text;
+						vpc.generate_letter_array();
+						vpc.timeline();
+					}
+				},
+
+				watch: {
+					bgimage: function(val){
+						qs('html').className = val;
+					}
+				},
+
+				methods: {
+					//creating postcard
+					generate_postcard: function(){
+						var jsondata = {
+							h: this.header,
+							t: this.card_text,
+							b: this.bgimage
+						};
+						hash = btoa(JSON.stringify(jsondata));
+						console.log(window.location.origin + '' + window.location.pathname + '#' + hash);
+						window.location = window.location.origin + '' + window.location.pathname + '#' + hash;
+						location.reload();
+					},
+
+					//new postcard link on view
+					create_postcard: function(){
+						window.location = window.location.origin + '' + window.location.pathname;
+					}
+				}
+
+			});
+		</script>
+	</body>
+
+</html>
